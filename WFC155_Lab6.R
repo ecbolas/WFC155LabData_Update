@@ -1,6 +1,9 @@
 #### Welcome to your sixth lab for WFC 155! ####
 ## Lab 6: Habitat selection ##
 
+#### Update 12/2023 ####
+# I am using the script to learn how to use terra and also learn how to do RSFs ;)
+
 # Today we will learn about how to estimate habitat selection from animal location and
 #   habitat class data
 
@@ -29,10 +32,13 @@ library(adehabitatHR)
 library(ggplot2)
 library(lattice)
 library(rasterVis)
+library(terra)
+library(here)
 
 # Like usual, make sure you set your working directory to the folder where you 
 #   downloaded the files for lab this week
-setwd("/Users/justinesmith/WFC155/WFC155_labs")
+# setwd("/Users/justinesmith/WFC155/WFC155_labs")
+
 
 #-----------------------------------#
 #### LOADING THE DATA ####
@@ -41,13 +47,16 @@ setwd("/Users/justinesmith/WFC155/WFC155_labs")
 # Today, we have one raster layer: the National Land Cover Database (NLCD)
 #   The NLCD is a national database of habitat classes with a 30 meter resolution
 #   (meaning each raster cell, or pixel, is 30 m x 30 m)
-utah_NLCD <- raster("utah_NLCD.tif")
+utah_NLCD <- raster("Data files/utah_NLCD.tif")
+utah_NLCD_T<- terra::rast("Datafiles/utah_NLCD.tif")
 
 # First, we need to know the crs of our raster. Looks like it's in UTMs, Zone 12
 crs(utah_NLCD)
+crs(utah_NLCD_T)
 
 # Now let's look at the layer
 plot(utah_NLCD)
+plot(utah_NLCD_T)
 
 # Not very satisfying! What are all these numbers? What do they mean?
 #   Each number corresponds with a habitat class, but we can't tell what those are from
@@ -57,13 +66,17 @@ plot(utah_NLCD)
 #   of continuous data
 # We can see the categories by using levels()
 raster::levels(utah_NLCD)
+terra::levels(utah_NLCD_T)
+
+## Ellie note: below, Justine had to assign the names of the habitat classes to the raster. Terra seems to have already done that for me. But, here I will turn it into a levelplot for downstream stuff ##
 
 # I've saved these levels in a file that we can use to add habitat class names to our plot
 # All we need to do is load in the landcoverkey csv file and assign the colors associated
 #   with each class to col.regions in our raster plotting command: levelplot()
-landcoverkey <- read_csv("landcoverkey.csv")
+landcoverkey <- read_csv("Datafiles/landcoverkey.csv")
 landcoverkey
-levelplot(utah_NLCD, col.regions=c(landcoverkey$colortable))
+rasterVis::levelplot(utah_NLCD, col.regions=c(landcoverkey$colortable))
+rasterVis::levelplot(utah_NLCD_T, col.regions=c(landcoverkey$colortable))
 
 # Our movement dataset is a subset of carnivores from a larger study in Utah
 #   These data are open source, which means they are freely available to download online
@@ -78,9 +91,10 @@ levelplot(utah_NLCD, col.regions=c(landcoverkey$colortable))
 # We'll use the same crs as our raster so they can be plotted on top of each other
 # You might notice that our crs is the same as with the wolf dataset! We are quite a bit 
 #   further south today, but our Utah carnivores are in the same UTM zone as the Alberta wolves
-read_csv("Utah_carnivores.csv") %>% 
+read_csv("Datafiles/Utah_carnivores.csv") %>% 
   st_as_sf(coords = c("UTMeasting","UTMnorthing"), 
            crs = "+proj=utm +zone=12 +datum=WGS84 +units=m +no_defs") -> utah_carnivores_sf
+class(utah_carnivores_sf)
 
 # As always, we'll check out our data
 # If we color by individual and change the shape by species we can see how many individuals
@@ -88,6 +102,8 @@ read_csv("Utah_carnivores.csv") %>%
 # How many cougars do we have? How many coyotes?
 ggplot() + 
   geom_sf(data = utah_carnivores_sf, aes(color = individual, shape = species))
+
+## Ellie note: I am going to skip the sp stuff (since it's done now) and make my HR's for this tutorial either with Kyle's code or something else
 
 # Like last week, we sometimes need an "sp" object (e.g for calculating home ranges)
 #   So let's also store an sp version of our data
@@ -97,6 +113,7 @@ utah_carnivores_sp <- as_Spatial(utah_carnivores_sf)
 #   movement data on the habitat classes
 levelplot(utah_NLCD, col.regions=c(landcoverkey$colortable)) +
   latticeExtra::layer(sp.points(utah_carnivores_sp,col=alpha("black", 0.3), pch=20))
+rasterVis::levelplot(utah_NLCD_T, col.regions=c(landcoverkey$colortable)) + latticeExtra::layer(utah_carnivores_sf)
 
 #** QUESTION 1: Which habitat type looks most abundant across our entire NLCD layer? Which 
 #     habitats seem most abundant in the area that we have carnivore movement data? What
